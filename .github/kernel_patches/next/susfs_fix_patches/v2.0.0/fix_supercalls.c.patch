@@ -1,8 +1,6 @@
-diff --git a/kernel/supercalls.c b/kernel/supercalls.c
-index 0a9fc63d..patched 100644
 --- a/kernel/supercalls.c
 +++ b/kernel/supercalls.c
-@@ -14,6 +14,10 @@
+@@ -11,6 +11,10 @@
  #include <linux/task_work.h>
  #include <linux/uaccess.h>
  #include <linux/version.h>
@@ -11,9 +9,9 @@ index 0a9fc63d..patched 100644
 +#include <linux/susfs.h>
 +#endif
  
- #include "supercalls.h"
  #include "arch.h"
-@@ -28,6 +32,10 @@
+ #include "allowlist.h"
+@@ -25,6 +29,10 @@
  #include "file_wrapper.h"
  #include "syscall_hook_manager.h"
  
@@ -24,7 +22,7 @@ index 0a9fc63d..patched 100644
  // Permission check functions
  bool only_manager(void)
  {
-@@ -108,6 +116,9 @@ static int do_report_event(void __user *arg)
+@@ -107,6 +115,9 @@ static int do_report_event(void __user *arg)
  		boot_complete_lock = true;
  		pr_info("boot_complete triggered\n");
  		on_boot_completed();

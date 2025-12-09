@@ -1,8 +1,6 @@
-diff --git a/kernel/ksu.c b/kernel/ksu.c
-index a22aefa0..patched 100644
 --- a/kernel/ksu.c
 +++ b/kernel/ksu.c
-@@ -6,6 +6,9 @@
+@@ -3,6 +3,9 @@
  #include <linux/kobject.h>
  #include <linux/module.h>
  #include <linux/workqueue.h>

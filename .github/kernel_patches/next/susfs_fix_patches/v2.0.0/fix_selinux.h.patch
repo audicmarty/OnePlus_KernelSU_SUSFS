@@ -1,8 +1,6 @@
-diff --git a/kernel/selinux/selinux.h b/kernel/selinux/selinux.h
-index 400e9877..patched 100644
 --- a/kernel/selinux/selinux.h
 +++ b/kernel/selinux/selinux.h
-@@ -34,4 +34,17 @@ int handle_sepolicy(unsigned long arg3, void __user *arg4);
+@@ -29,4 +29,17 @@ void setup_selinux(const char *domain);
  
  void setup_ksu_cred();
  
