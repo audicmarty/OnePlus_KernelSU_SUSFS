@@ -9,7 +9,7 @@ on:
     inputs:
       device_config:
         type: choice
-        description: "Select device configuration"
+        description: "📱 Select device configuration"
         required: true
         default: OP13-epicmann24
         options:
@@ -18,7 +18,7 @@ on:
           - OP11-epicmann24
       ksu_type:
         type: choice
-        description: "KernelSU Type"
+        description: "🔐 KernelSU Type"
         required: true
         default: KSUN
         options:
@@ -27,73 +27,91 @@ on:
           - SUKISU
       ksu_branch:
         type: string
-        description: "KSU Branch/Commit (leave empty for default: next/main)"
+        description: "🌿 KSU Branch/Commit (leave empty for default)"
         required: false
         default: ""
       susfs_enabled:
         type: boolean
-        description: "Enable SUSFS?"
+        description: "🛡️ Enable SUSFS?"
         required: true
         default: true
       susfs_branch:
         type: string
-        description: "SUSFS Branch/Commit (leave empty for auto)"
+        description: "🌿 SUSFS Branch/Commit (leave empty for auto)"
         required: false
         default: ""
+      susfs_module:
+        type: choice
+        description: "📦 SUSFS Module to bundle"
+        required: true
+        default: none
+        options:
+          - none
+          - latest-ci
+          - latest-release
+      manager_variant:
+        type: choice
+        description: "📱 Manager APK to bundle"
+        required: true
+        default: official
+        options:
+          - official
+          - spoofed
+          - miuix
       ZRAM:
         type: boolean
-        description: "Enable additional ZRAM algorithms?"
+        description: "💾 Enable additional ZRAM algorithms?"
         required: true
         default: false
       BBR_ECN:
         type: boolean
-        description: "Enable BBR+ECN network optimization?"
+        description: "🌐 Enable BBR+ECN network optimization?"
         required: true
         default: true
       KPM:
         type: boolean
-        description: "Enable Kernel Patch Module (KPM)?"
+        description: "🧩 Enable Kernel Patch Module (KPM)?"
         required: true
         default: false
       LSM:
         type: boolean
-        description: "Enable Baseband Guard (BBG) LSM?"
+        description: "📡 Enable Baseband Guard (BBG) LSM?"
         required: true
         default: true
       NETFILTER:
         type: boolean
-        description: "Enable network functionality extensions?"
+        description: "🔥 Enable NETFILTER extensions?"
         required: true
         default: true
       SCHED:
         type: boolean
-        description: "Enable Fengchi scheduler (HMBIRD)?"
+        description: "⚡ Enable Fengchi scheduler (HMBIRD)?"
         required: true
         default: false
       SUSFS_DEV:
         type: boolean
-        description: "Use SUSFS-DEV branch?"
+        description: "🧪 Use SUSFS-DEV branch?"
         required: true
         default: false
       optimize_level:
         type: choice
-        description: "Compiler optimization level"
+        description: "⚙️ Compiler optimization level"
         required: true
         options: [O2, O3]
         default: O3
       clean_build:
         type: boolean
-        description: "Clean build (disable ccache)?"
+        description: "🧹 Clean build (disable ccache)?"
         required: true
         default: false
       custom_suffix:
         type: string
-        description: "Custom kernel suffix (optional)"
+        description: "🏷️ Custom kernel suffix (optional)"
         required: false
         default: ""
       custom_sublevel:
         type: string
-        description: "Custom kernel SUBLEVEL (optional)"
+        description: "🔢 Custom kernel SUBLEVEL (optional)"
         required: false
         default: ""
 
