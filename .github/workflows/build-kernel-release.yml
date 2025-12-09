@@ -44,6 +44,10 @@ on:
         description: 'Clean build (no ccache)'
         type: boolean
         default: false
+      model_filter:
+        description: 'Filter by model name (e.g. OP13-epicmann24). Leave empty for all models.'
+        type: string
+        default: ''
       android12-5_10_susfs_branch_or_commit:
         description: 'Enter SusFS Branch or commit hash for android12-5.10'
         type: string
@@ -143,6 +147,14 @@ jobs:
           esac
           
           filtered=$(jq -c "$jq_filter" matrix.json)
+          
+          # Apply model filter if specified
+          model_filter="${{ github.event.inputs.model_filter }}"
+          if [ -n "$model_filter" ]; then
+            filtered=$(echo "$filtered" | jq -c --arg mf "$model_filter" '[.[] | select(.model | test($mf))]')
+            echo "ℹ️  Model filter applied: $model_filter"
+          fi
+          
           count=$(jq 'length' <<<"$filtered")
           
           if [ "$count" -eq 0 ]; then
