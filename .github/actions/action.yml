@@ -771,7 +771,7 @@ runs:
               patch -p1 --forward < 10_enable_susfs_for_ksu.patch  || true
               
               # Apply ALL fix patches available in the directory (more robust than matching .rej files)
-              FIX_PATCHES_DIR="../../../kernel_patches/next/susfs_fix_patches/$susfs_version"
+              FIX_PATCHES_DIR="../../../.github/kernel_patches/next/susfs_fix_patches/$susfs_version"
               echo "Applying all fix patches from: $FIX_PATCHES_DIR"
               
               if [ -d "$FIX_PATCHES_DIR" ]; then
