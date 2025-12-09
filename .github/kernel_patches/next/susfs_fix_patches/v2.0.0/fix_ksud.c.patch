@@ -2,28 +2,47 @@ diff --git a/kernel/ksud.c b/kernel/ksud.c
 index 1ba0528d..60d0a171 100644
 --- a/kernel/ksud.c
 +++ b/kernel/ksud.c
-@@ -30,6 +30,9 @@
- #include "klog.h" // IWYU pragma: keep
+@@ -30,6 +30,10 @@
  #include "ksud.h"
+ #include "seccomp_cache.h"
  #include "selinux/selinux.h"
 +#ifdef CONFIG_KSU_SUSFS
 +#include <linux/susfs.h>
-+#endif // #ifdef CONFIG_KSU_SUSFS
++#undef CONFIG_KSU_KPROBES_HOOK
++#endif
+ #include "syscall_hook_manager.h"
 
  bool ksu_module_mounted __read_mostly = false;
- bool ksu_boot_completed __read_mostly = false;
-@@ -213,6 +216,10 @@ static void on_post_fs_data_cbfun(struct callback_head *cb)
+@@ -66,10 +70,15 @@ static void stop_input_hook();
+ #ifdef CONFIG_KSU_KPROBES_HOOK
+ static struct work_struct stop_vfs_read_work;
+ static struct work_struct stop_execve_hook_work;
+ static struct work_struct stop_input_hook_work;
+ #else
++#ifndef CONFIG_KSU_SUSFS
+ bool ksu_vfs_read_hook __read_mostly = true;
+ bool ksu_execveat_hook __read_mostly = true;
+ bool ksu_input_hook __read_mostly = true;
++#else
++extern bool ksu_vfs_read_hook;
++extern bool ksu_execveat_hook;
++extern bool ksu_input_hook;
++#endif
+ #endif
+
+ u32 ksu_file_sid;
+@@ -213,6 +222,10 @@ static void on_post_fs_data_cbfun(struct callback_head *cb)
  static struct callback_head on_post_fs_data_cb = { .func =
  							on_post_fs_data_cbfun };
 
 +#ifdef CONFIG_KSU_SUSFS
 +extern int ksu_handle_execveat_init(struct filename *filename);
-+#endif // #ifdef CONFIG_KSU_SUSFS
++#endif
 +
  // IMPORTANT NOTE: the call from execve_handler_pre WON'T provided correct value for envp and flags in GKI version
  int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
  			     struct user_arg_ptr *argv,
-@@ -232,6 +239,14 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
+@@ -236,6 +249,14 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
  		return 0;
  	}
 
@@ -33,8 +52,77 @@ index 1ba0528d..60d0a171 100644
 +		//   as we don't want it to execute ksu_handle_execveat_sucompat()
 +		return 1;
 +	}
-+#endif // #ifdef CONFIG_KSU_SUSFS
++#endif
 +
  	if (unlikely(!memcmp(filename->name, system_bin_init,
  			     sizeof(system_bin_init) - 1) &&
  		     argv)) {
+@@ -372,6 +393,12 @@ static ssize_t read_iter_proxy(struct kiocb *iocb, struct iov_iter *to)
+ static int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
+ 			       size_t *count_ptr, loff_t **pos)
+ {
++#ifdef CONFIG_KSU_SUSFS
++	if (!ksu_vfs_read_hook) {
++		return 0;
++	}
++#endif
++
+ 	struct file *file;
+ 	char __user *buf;
+ 	size_t count;
+@@ -465,9 +492,15 @@ static int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
+ 	return 0;
+ }
+
++#ifndef CONFIG_KSU_SUSFS
+ static int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
+ 			       size_t *count_ptr)
++#else
++int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
++			       size_t *count_ptr)
++#endif
+ {
++#ifndef CONFIG_KSU_KPROBES_HOOK
+ 	struct file *file = fget(fd);
+ 	if (!file) {
+ 		return 0;
+@@ -475,6 +508,7 @@ static int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
+ 	int result = ksu_handle_vfs_read(&file, buf_ptr, count_ptr, NULL);
+ 	fput(file);
+ 	return result;
++#endif
+ }
+
+ static unsigned int volumedown_pressed_count = 0;
+@@ -487,6 +521,12 @@ static bool is_volumedown_enough(unsigned int count)
+ int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code,
+ 				  int *value)
+ {
++#ifdef CONFIG_KSU_SUSFS
++	if (!ksu_input_hook) {
++		return 0;
++	}
++#endif
++
+ 	if (*type == EV_KEY && *code == KEY_VOLUMEDOWN) {
+ 		int val = *value;
+ 		pr_info("KEY_VOLUMEDOWN val: %d\n", val);
+@@ -719,10 +759,17 @@ static void stop_execve_hook()
+ static void stop_input_hook()
+ {
+ #ifdef CONFIG_KSU_KPROBES_HOOK
+ 	static bool input_hook_stopped = false;
+ 	if (input_hook_stopped) {
+ 		return;
+ 	}
+ 	input_hook_stopped = true;
+ 	bool ret = schedule_work(&stop_input_hook_work);
+ 	pr_info("unregister input kprobe: %d!\n", ret);
++#else
++#ifdef CONFIG_KSU_SUSFS
++	if (!ksu_input_hook) { return; }
++	ksu_input_hook = false;
++	pr_info("stop input_hook\n");
++#endif
+ #endif
+ }

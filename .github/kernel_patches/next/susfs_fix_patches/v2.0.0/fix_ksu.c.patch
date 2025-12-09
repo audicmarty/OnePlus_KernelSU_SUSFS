@@ -8,7 +8,7 @@ index a22aefa0..92653213 100644
  #include <linux/workqueue.h>
 +#ifdef CONFIG_KSU_SUSFS
 +#include <linux/susfs.h>
-+#endif // #ifdef CONFIG_KSU_SUSFS
++#endif
 
  #include "allowlist.h"
  #include "feature.h"
@@ -16,40 +16,51 @@ index a22aefa0..92653213 100644
  #include "throne_tracker.h"
 +#ifndef CONFIG_KSU_SUSFS
  #include "syscall_hook_manager.h"
-+#endif // #ifndef CONFIG_KSU_SUSFS
++#endif
  #include "ksud.h"
  #include "supercalls.h"
- #include "ksu.h"
-@@ -36,13 +41,21 @@ int __init kernelsu_init(void)
 
-     ksu_supercalls_init();
+@@ -29,15 +34,25 @@ int __init kernelsu_init(void)
+
+ 	ksu_supercalls_init();
 
 +#ifndef CONFIG_KSU_SUSFS
-     ksu_syscall_hook_manager_init();
-+#endif // #ifndef CONFIG_KSU_SUSFS
+ 	ksu_syscall_hook_manager_init();
++#endif
 
-     ksu_allowlist_init();
+ 	ksu_allowlist_init();
 
-     ksu_throne_tracker_init();
+ 	ksu_throne_tracker_init();
 
+-#ifdef CONFIG_KSU_KPROBES_HOOK
 +#ifdef CONFIG_KSU_SUSFS
-+    susfs_init();
-+#endif // #ifdef CONFIG_KSU_SUSFS
++	susfs_init();
++#else
++	#ifdef CONFIG_KSU_KPROBES_HOOK
+ 	ksu_ksud_init();
+-#else
++	#else
+ 	pr_alert("KPROBES is disabled, KernelSU may not work, please check https://kernelsu.org/guide/how-to-integrate-for-non-gki.html");
++	#endif
++#endif
 +
++#ifdef MODULE
++#ifndef CONFIG_KSU_DEBUG
++	kobject_del(&THIS_MODULE->mkobj.kobj);
+ #endif
+ #endif
+
+@@ -58,11 +73,13 @@ void kernelsu_exit(void)
+
+ 	ksu_observer_exit();
+
+-#ifdef CONFIG_KSU_KPROBES_HOOK
++#if defined(CONFIG_KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
+ 	ksu_ksud_exit();
+ #endif
+
 +#ifndef CONFIG_KSU_SUSFS
-     ksu_ksud_init();
-+#endif // #ifndef CONFIG_KSU_SUSFS
+ 	ksu_syscall_hook_manager_exit();
++#endif
 
- #ifdef MODULE
- #ifndef CONFIG_KSU_DEBUG
-@@ -61,9 +74,11 @@ void kernelsu_exit(void)
-
-     ksu_observer_exit();
-
-+#ifndef CONFIG_KSU_SUSFS
-     ksu_ksud_exit();
-
-     ksu_syscall_hook_manager_exit();
-+#endif // #ifndef CONFIG_KSU_SUSFS
-
-     ksu_supercalls_exit();
+ 	ksu_supercalls_exit();

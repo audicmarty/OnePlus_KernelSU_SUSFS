@@ -3,17 +3,17 @@ index 12345678..87654321 100644
 --- a/kernel/supercalls.c
 +++ b/kernel/supercalls.c
 @@ -15,6 +15,10 @@
- #include "allowlist.h"
- #include "klog.h" // IWYU pragma: keep
- #include "manager.h"
+ #include "version.h"
+
+ #include "arch.h"
 +#ifdef CONFIG_KSU_SUSFS
 +#include <linux/susfs.h>
 +#include <linux/susfs_def.h>
-+#endif // #ifdef CONFIG_KSU_SUSFS
-
- #include "admin.h"
- #include "app_profile.h"
-@@ -115,6 +119,78 @@ static long ksu_report(const char __user *key_buf, u32 key_len,
++#endif
+ #include "allowlist.h"
+ #include "feature.h"
+ #include "klog.h" // IWYU pragma: keep
+@@ -479,6 +483,78 @@ static int do_get_version_tag(void __user *arg)
  	return 0;
  }
 
@@ -90,21 +90,17 @@ index 12345678..87654321 100644
 +
 +	return error;
 +}
-+#endif // #ifdef CONFIG_KSU_SUSFS
++#endif
 +
- long kernelsu_supercall(unsigned long arg1, unsigned long arg2,
- 			unsigned long arg3, unsigned long arg4,
- 			unsigned long arg5, unsigned long arg6)
-@@ -395,6 +471,11 @@ long kernelsu_supercall(unsigned long arg1, unsigned long arg2,
- 		pr_info("ksu_report: %d\n", error);
- 		break;
- 	}
+ // IOCTL handlers mapping table
+ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
+ 	{ .cmd = KSU_IOCTL_GRANT_ROOT, .name = "GRANT_ROOT", .handler = do_grant_root, .perm_check = allowed_for_su },
+@@ -500,6 +576,9 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
+ 	{ .cmd = KSU_IOCTL_MANAGE_MARK, .name = "MANAGE_MARK", .handler = do_manage_mark, .perm_check = manager_or_root },
+ 	{ .cmd = KSU_IOCTL_GET_HOOK_MODE, .name = "GET_HOOK_MODE", .handler = do_get_hook_mode, .perm_check = manager_or_root },
+ 	{ .cmd = KSU_IOCTL_GET_VERSION_TAG, .name = "GET_VERSION_TAG", .handler = do_get_version_tag, .perm_check = manager_or_root },
 +#ifdef CONFIG_KSU_SUSFS
-+	case CMD_SUSFS_FROM_KSU: {
-+		error = handle_susfs_from_ksu_supercall(arg3, arg4, arg5, arg6);
-+		break;
-+	}
-+#endif // #ifdef CONFIG_KSU_SUSFS
- 	default:
- 		error = -EINVAL;
- 		break;
++	{ .cmd = CMD_SUSFS_FROM_KSU, .name = "SUSFS_FROM_KSU", .handler = (void*)handle_susfs_from_ksu_supercall, .perm_check = manager_or_root },
++#endif
+ 	{ .cmd = 0, .name = NULL, .handler = NULL, .perm_check = NULL } // Sentinel
+ };
