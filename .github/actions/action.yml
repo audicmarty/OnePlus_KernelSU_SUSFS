@@ -663,6 +663,45 @@ runs:
         echo "✅ KernelSU added (commit: ${KSU_COMMIT_SHA:0:8})"
         echo "::endgroup::"
 
+    - name: Add SukiSU Ultra
+      shell: bash
+      if: ${{ inputs.ksu_type == 'SUKISU' }}
+      run: |
+        set -euo pipefail
+        echo "::group::Add SukiSU Ultra"
+        cd "$CONFIG/kernel_platform"
+        echo "Adding SukiSU Ultra..."
+        
+        # Default to builtin branch if not specified
+        KSU_BRANCH="${{ inputs.ksu_branch_or_hash }}"
+        if [ -z "$KSU_BRANCH" ]; then
+          KSU_BRANCH="builtin"
+        fi
+        
+        curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s "$KSU_BRANCH"
+        
+        cd ./KernelSU
+        
+        # Extract version info
+        KSU_API_VERSION=$(grep -m1 "KSU_VERSION_API :=" kernel/Kbuild | awk -F'= ' '{print $2}' | tr -d '[:space:]')
+        if [ -z "$KSU_API_VERSION" ]; then
+          KSU_API_VERSION="3.1.7"
+        fi
+        
+        GIT_HASH=$(git rev-parse --short HEAD)
+        KSU_COMMIT_SHA=$(git rev-parse HEAD)
+        KSU_VERSION=$(expr $(git rev-list --count HEAD 2>/dev/null || echo 13000) "+" 37185)
+        
+        echo "KSU_COMMIT_SHA=$KSU_COMMIT_SHA" >> $GITHUB_ENV
+        echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+        echo "KSU_API_VERSION=$KSU_API_VERSION" >> $GITHUB_ENV
+        
+        echo "SukiSU Ultra API Version: $KSU_API_VERSION"
+        echo "SukiSU Ultra Version: $KSU_VERSION"
+        echo "✅ SukiSU Ultra added (commit: ${GIT_HASH})"
+        echo "::endgroup::"
+
+
     - name: Apply SUSFS Patches
       shell: bash
       if: ${{ env.OP_SUSFS == 'true' }}
