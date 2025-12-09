@@ -1,0 +1,196 @@
+name: Build Single Device (Advanced Options)
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_config:
+        type: choice
+        description: "Select device configuration"
+        required: true
+        default: OP13-epicmann24
+        options:
+          - OP13-epicmann24
+          - OP12-epicmann24
+          - OP11-epicmann24
+      ksu_type:
+        type: choice
+        description: "KernelSU Type"
+        required: true
+        default: KSUN
+        options:
+          - KSUN
+          - KSU
+          - SUKISU
+      ksu_branch:
+        type: string
+        description: "KSU Branch/Commit (leave empty for default: next/main)"
+        required: false
+        default: ""
+      susfs_enabled:
+        type: boolean
+        description: "Enable SUSFS?"
+        required: true
+        default: true
+      susfs_branch:
+        type: string
+        description: "SUSFS Branch/Commit (leave empty for auto)"
+        required: false
+        default: ""
+      ZRAM:
+        type: boolean
+        description: "Enable additional ZRAM algorithms?"
+        required: true
+        default: false
+      BBR_ECN:
+        type: boolean
+        description: "Enable BBR+ECN network optimization?"
+        required: true
+        default: true
+      KPM:
+        type: boolean
+        description: "Enable Kernel Patch Module (KPM)?"
+        required: true
+        default: false
+      LSM:
+        type: boolean
+        description: "Enable Baseband Guard (BBG) LSM?"
+        required: true
+        default: true
+      NETFILTER:
+        type: boolean
+        description: "Enable network functionality extensions?"
+        required: true
+        default: true
+      SCHED:
+        type: boolean
+        description: "Enable Fengchi scheduler (HMBIRD)?"
+        required: true
+        default: false
+      SUSFS_DEV:
+        type: boolean
+        description: "Use SUSFS-DEV branch?"
+        required: true
+        default: false
+      optimize_level:
+        type: choice
+        description: "Compiler optimization level"
+        required: true
+        options: [O2, O3]
+        default: O3
+      clean_build:
+        type: boolean
+        description: "Clean build (disable ccache)?"
+        required: true
+        default: false
+      custom_suffix:
+        type: string
+        description: "Custom kernel suffix (optional)"
+        required: false
+        default: ""
+      custom_sublevel:
+        type: string
+        description: "Custom kernel SUBLEVEL (optional)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    name: Build ${{ github.event.inputs.device_config }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🔍 Load device configuration
+        id: load_config
+        run: |
+          CONFIG_FILE="configs/oos16/${{ github.event.inputs.device_config }}.json"
+          
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "::error::Config file not found: $CONFIG_FILE"
+            exit 1
+          fi
+          
+          # Load base config
+          BASE_CONFIG=$(jq -c '.' "$CONFIG_FILE")
+          
+          # Override feature flags from inputs
+          MODIFIED_CONFIG=$(echo "$BASE_CONFIG" | jq -c \
+            --argjson susfs "${{ github.event.inputs.susfs_enabled }}" \
+            --argjson hmbird "${{ github.event.inputs.SCHED }}" \
+            --argjson bbr "${{ github.event.inputs.BBR_ECN }}" \
+            --argjson bbg "${{ github.event.inputs.LSM }}" \
+            --argjson ip_set "${{ github.event.inputs.NETFILTER }}" \
+            --argjson ttl "${{ github.event.inputs.NETFILTER }}" \
+            '. + {susfs: $susfs, hmbird: $hmbird, bbr: $bbr, bbg: $bbg, ip_set: $ip_set, ttl: $ttl}')
+          
+          echo "config_json=$MODIFIED_CONFIG" >> "$GITHUB_OUTPUT"
+          
+          echo "📋 Device Configuration:"
+          echo "$MODIFIED_CONFIG" | jq '.'
+
+      - name: 📊 Build Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🎯 Build Configuration
+          
+          **Device:** \`${{ github.event.inputs.device_config }}\`  
+          **KSU Type:** \`${{ github.event.inputs.ksu_type }}\`  
+          **KSU Branch:** \`${{ github.event.inputs.ksu_branch || 'default' }}\`  
+          
+          **Features:**
+          - SUSFS: ${{ github.event.inputs.susfs_enabled && '✅' || '❌' }}
+          - ZRAM: ${{ github.event.inputs.ZRAM && '✅' || '❌' }}
+          - BBR+ECN: ${{ github.event.inputs.BBR_ECN && '✅' || '❌' }}
+          - KPM: ${{ github.event.inputs.KPM && '✅' || '❌' }}
+          - BBG (LSM): ${{ github.event.inputs.LSM && '✅' || '❌' }}
+          - NETFILTER: ${{ github.event.inputs.NETFILTER && '✅' || '❌' }}
+          - HMBIRD: ${{ github.event.inputs.SCHED && '✅' || '❌' }}
+          
+          **Build Options:**
+          - Optimization: \`${{ github.event.inputs.optimize_level }}\`
+          - Clean Build: ${{ github.event.inputs.clean_build && '✅' || '❌' }}
+          EOF
+
+      - name: 🔨 Build Kernel
+        id: build
+        uses: ./.github/actions
+        with:
+          op_config_json: ${{ steps.load_config.outputs.config_json }}
+          ksu_type: ${{ github.event.inputs.ksu_type }}
+          ksu_branch_or_hash: ${{ github.event.inputs.ksu_branch }}
+          susfs_commit_hash_or_branch: ${{ github.event.inputs.susfs_branch }}
+          optimize_level: ${{ github.event.inputs.optimize_level }}
+          clean: ${{ github.event.inputs.clean_build }}
+
+      - name: 📊 Build Result
+        if: always()
+        run: |
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          
+          ---
+          
+          ## ✅ Build Successful
+          
+          **Kernel Version:** \`${{ steps.build.outputs.kernel_version }}\`  
+          **KSU Version:** \`${{ steps.build.outputs.ksu_version }}\`  
+          **Build Time:** ${{ steps.build.outputs.build_time }}s  
+          **SHA256:** \`${{ steps.build.outputs.image_sha256 }}\`
+          EOF
+          else
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          
+          ---
+          
+          ## ❌ Build Failed
+          
+          Check the logs for details.
+          EOF
+          fi
