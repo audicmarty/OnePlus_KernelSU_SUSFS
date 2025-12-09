@@ -1,0 +1,17 @@
+diff --git a/kernel/sucompat.h b/kernel/sucompat.h
+index 12345678..87654321 100644
+--- a/kernel/sucompat.h
++++ b/kernel/sucompat.h
+@@ -9,4 +9,12 @@
+ extern bool ksu_sucompat_non_kp;
+ #endif
+
++#ifdef CONFIG_KSU_SUSFS_SUS_SU
++#define su SU_PATH
++#define sh_path SH_PATH
++#define ksud_path KSUD_PATH
++#else
++static const char su[] = SU_PATH;
++#endif
++
+ #endif // __KSU_H_SUCOMPAT

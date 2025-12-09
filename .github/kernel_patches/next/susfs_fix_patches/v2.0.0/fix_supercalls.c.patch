@@ -1,0 +1,110 @@
+diff --git a/kernel/supercalls.c b/kernel/supercalls.c
+index 12345678..87654321 100644
+--- a/kernel/supercalls.c
++++ b/kernel/supercalls.c
+@@ -15,6 +15,10 @@
+ #include "allowlist.h"
+ #include "klog.h" // IWYU pragma: keep
+ #include "manager.h"
++#ifdef CONFIG_KSU_SUSFS
++#include <linux/susfs.h>
++#include <linux/susfs_def.h>
++#endif // #ifdef CONFIG_KSU_SUSFS
+
+ #include "admin.h"
+ #include "app_profile.h"
+@@ -115,6 +119,78 @@ static long ksu_report(const char __user *key_buf, u32 key_len,
+ 	return 0;
+ }
+
++#ifdef CONFIG_KSU_SUSFS
++static long handle_susfs_from_ksu_supercall(unsigned long arg3, unsigned long arg4, unsigned long arg5, unsigned long arg6)
++{
++	int error = 0;
++	int cmd = arg3;
++
++	switch (cmd) {
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	case CMD_SUSFS_ADD_SUS_PATH:
++		error = susfs_add_sus_path((struct st_susfs_sus_path __user *)arg4);
++		break;
++#endif
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	case CMD_SUSFS_ADD_SUS_MOUNT:
++		error = susfs_add_sus_mount((struct st_susfs_sus_mount __user *)arg4);
++		break;
++#endif
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++	case CMD_SUSFS_ADD_SUS_KSTAT:
++		error = susfs_add_sus_kstat((struct st_susfs_sus_kstat __user *)arg4);
++		break;
++	case CMD_SUSFS_UPDATE_SUS_KSTAT:
++		error = susfs_update_sus_kstat((struct st_susfs_sus_kstat __user *)arg4);
++		break;
++#endif
++#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++	case CMD_SUSFS_ADD_SUS_MAP:
++		error = susfs_add_sus_map((struct st_susfs_sus_map __user *)arg4);
++		break;
++#endif
++#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++	case CMD_SUSFS_ADD_OPEN_REDIRECT:
++		error = susfs_add_open_redirect((struct st_susfs_open_redirect __user *)arg4);
++		break;
++#endif
++#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
++	case CMD_SUSFS_SET_UNAME:
++		error = susfs_set_uname((struct st_susfs_uname __user *)arg4);
++		break;
++#endif
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++	case CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG:
++		error = susfs_set_cmdline_or_bootconfig((struct st_susfs_cmdline_or_bootconfig __user *)arg4);
++		break;
++#endif
++	case CMD_SUSFS_SHOW_VERSION:
++		error = susfs_show_version((char __user *)arg4, (size_t)arg5);
++		break;
++	case CMD_SUSFS_SHOW_ENABLED_FEATURES:
++		error = susfs_show_enabled_features((char __user *)arg4, (size_t)arg5);
++		break;
++	case CMD_SUSFS_SHOW_VARIANT:
++		error = susfs_show_variant((char __user *)arg4, (size_t)arg5);
++		break;
++#ifdef CONFIG_KSU_SUSFS_SUS_SU
++	case CMD_SUSFS_SET_SUS_SU_MODE:
++		error = susfs_set_sus_su_mode((int)arg4);
++		break;
++	case CMD_SUSFS_GET_SUS_SU_MODE:
++		error = susfs_get_sus_su_mode((int __user *)arg4);
++		break;
++	case CMD_SUSFS_SET_SUS_SU_PATH:
++		error = susfs_set_sus_su_path((struct st_susfs_sus_su_path __user *)arg4);
++		break;
++#endif
++	default:
++		pr_err("SUSFS: unknown cmd: %d\n", cmd);
++		error = -EINVAL;
++		break;
++	}
++
++	return error;
++}
++#endif // #ifdef CONFIG_KSU_SUSFS
++
+ long kernelsu_supercall(unsigned long arg1, unsigned long arg2,
+ 			unsigned long arg3, unsigned long arg4,
+ 			unsigned long arg5, unsigned long arg6)
+@@ -395,6 +471,11 @@ long kernelsu_supercall(unsigned long arg1, unsigned long arg2,
+ 		pr_info("ksu_report: %d\n", error);
+ 		break;
+ 	}
++#ifdef CONFIG_KSU_SUSFS
++	case CMD_SUSFS_FROM_KSU: {
++		error = handle_susfs_from_ksu_supercall(arg3, arg4, arg5, arg6);
++		break;
++	}
++#endif // #ifdef CONFIG_KSU_SUSFS
+ 	default:
+ 		error = -EINVAL;
+ 		break;

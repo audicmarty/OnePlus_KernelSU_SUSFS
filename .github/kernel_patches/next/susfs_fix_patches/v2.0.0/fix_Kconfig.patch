@@ -1,0 +1,12 @@
+diff --git a/kernel/Kconfig b/kernel/Kconfig
+index cc4dbb3a..393e16cd 100644
+--- a/kernel/Kconfig
++++ b/kernel/Kconfig
+@@ -2,7 +2,6 @@ menu "KernelSU"
+
+ config KSU
+ 	tristate "KernelSU function support"
+-	depends on KPROBES
+ 	default y
+ 	help
+ 	  Enable kernel-level root privileges on Android System.
