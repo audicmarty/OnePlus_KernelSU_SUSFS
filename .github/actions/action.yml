@@ -759,13 +759,38 @@ runs:
             fi
             cp ../../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
             if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
+              # KernelSU-Next: apply base patch with || true, then apply KSUN-specific fix patches
               patch -p1 --forward < 10_enable_susfs_for_ksu.patch  || true
               for file in $(find ./kernel -maxdepth 2 -name "*.rej" -printf "%f\n" | cut -d'.' -f1); do
                 echo "Patching file: $file.c with fix_$file.c.patch"
                 patch -p1 --forward < "../../../.github/kernel_patches/next/susfs_fix_patches/$susfs_version/fix_$file.c.patch"
               done
               patch -p1 --forward < "../../../.github/kernel_patches/next/susfs_fix_patches/$susfs_version/fix_kernel_compat.c.patch"
+            elif [ "${{ inputs.ksu_type }}" = "SUKISU" ]; then
+              # SukiSU Ultra: apply base patch with || true, then apply SukiSU-specific fix patches
+              patch -p1 --forward < 10_enable_susfs_for_ksu.patch  || true
+              for file in $(find ./kernel -maxdepth 2 -name "*.rej" -printf "%f\n" | sed 's/\.rej$//' | sed 's/\.c$//' | sort -u); do
+                fix_patch="../../../kernel_patches/next/susfs_fix_patches/$susfs_version/fix_${file}.c.patch"
+                fix_patch_h="../../../kernel_patches/next/susfs_fix_patches/$susfs_version/fix_${file}.h.patch"
+                if [ -f "$fix_patch" ]; then
+                  echo "Applying fix patch: fix_${file}.c.patch"
+                  patch -p1 --forward < "$fix_patch" || echo "::warning::fix_${file}.c.patch failed, continuing..."
+                fi
+                if [ -f "$fix_patch_h" ]; then
+                  echo "Applying fix patch: fix_${file}.h.patch"
+                  patch -p1 --forward < "$fix_patch_h" || echo "::warning::fix_${file}.h.patch failed, continuing..."
+                fi
+              done
+              # Apply additional fix patches that may not have .rej files
+              for extra_patch in Kconfig ksu kernel_compat; do
+                extra="../../../kernel_patches/next/susfs_fix_patches/$susfs_version/fix_${extra_patch}.patch"
+                if [ -f "$extra" ]; then
+                  echo "Applying extra fix patch: fix_${extra_patch}.patch"
+                  patch -p1 --forward < "$extra" || echo "::warning::fix_${extra_patch}.patch failed, continuing..."
+                fi
+              done
             else
+              # Standard KSU: direct apply
               patch -p1 --forward < 10_enable_susfs_for_ksu.patch
             fi
             ;;
