@@ -1,106 +1,36 @@
 diff --git a/kernel/supercalls.c b/kernel/supercalls.c
-index 12345678..87654321 100644
+index 0a9fc63d..patched 100644
 --- a/kernel/supercalls.c
 +++ b/kernel/supercalls.c
-@@ -15,6 +15,10 @@
- #include "version.h"
-
- #include "arch.h"
+@@ -14,6 +14,10 @@
+ #include <linux/task_work.h>
+ #include <linux/uaccess.h>
+ #include <linux/version.h>
 +#ifdef CONFIG_KSU_SUSFS
++#include <linux/namei.h>
 +#include <linux/susfs.h>
-+#include <linux/susfs_def.h>
 +#endif
- #include "allowlist.h"
- #include "feature.h"
- #include "klog.h" // IWYU pragma: keep
-@@ -479,6 +483,78 @@ static int do_get_version_tag(void __user *arg)
- 	return 0;
- }
-
+ 
+ #include "supercalls.h"
+ #include "arch.h"
+@@ -28,6 +32,10 @@
+ #include "file_wrapper.h"
+ #include "syscall_hook_manager.h"
+ 
 +#ifdef CONFIG_KSU_SUSFS
-+static long handle_susfs_from_ksu_supercall(unsigned long arg3, unsigned long arg4, unsigned long arg5, unsigned long arg6)
-+{
-+	int error = 0;
-+	int cmd = arg3;
-+
-+	switch (cmd) {
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	case CMD_SUSFS_ADD_SUS_PATH:
-+		error = susfs_add_sus_path((struct st_susfs_sus_path __user *)arg4);
-+		break;
++bool susfs_is_boot_completed_triggered __read_mostly = false;
 +#endif
++
+ // Permission check functions
+ bool only_manager(void)
+ {
+@@ -108,6 +116,9 @@ static int do_report_event(void __user *arg)
+ 		boot_complete_lock = true;
+ 		pr_info("boot_complete triggered\n");
+ 		on_boot_completed();
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	case CMD_SUSFS_ADD_SUS_MOUNT:
-+		error = susfs_add_sus_mount((struct st_susfs_sus_mount __user *)arg4);
-+		break;
++		susfs_is_boot_completed_triggered = true;
 +#endif
-+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-+	case CMD_SUSFS_ADD_SUS_KSTAT:
-+		error = susfs_add_sus_kstat((struct st_susfs_sus_kstat __user *)arg4);
-+		break;
-+	case CMD_SUSFS_UPDATE_SUS_KSTAT:
-+		error = susfs_update_sus_kstat((struct st_susfs_sus_kstat __user *)arg4);
-+		break;
-+#endif
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-+	case CMD_SUSFS_ADD_SUS_MAP:
-+		error = susfs_add_sus_map((struct st_susfs_sus_map __user *)arg4);
-+		break;
-+#endif
-+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-+	case CMD_SUSFS_ADD_OPEN_REDIRECT:
-+		error = susfs_add_open_redirect((struct st_susfs_open_redirect __user *)arg4);
-+		break;
-+#endif
-+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-+	case CMD_SUSFS_SET_UNAME:
-+		error = susfs_set_uname((struct st_susfs_uname __user *)arg4);
-+		break;
-+#endif
-+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-+	case CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG:
-+		error = susfs_set_cmdline_or_bootconfig((struct st_susfs_cmdline_or_bootconfig __user *)arg4);
-+		break;
-+#endif
-+	case CMD_SUSFS_SHOW_VERSION:
-+		error = susfs_show_version((char __user *)arg4, (size_t)arg5);
-+		break;
-+	case CMD_SUSFS_SHOW_ENABLED_FEATURES:
-+		error = susfs_show_enabled_features((char __user *)arg4, (size_t)arg5);
-+		break;
-+	case CMD_SUSFS_SHOW_VARIANT:
-+		error = susfs_show_variant((char __user *)arg4, (size_t)arg5);
-+		break;
-+#ifdef CONFIG_KSU_SUSFS_SUS_SU
-+	case CMD_SUSFS_SET_SUS_SU_MODE:
-+		error = susfs_set_sus_su_mode((int)arg4);
-+		break;
-+	case CMD_SUSFS_GET_SUS_SU_MODE:
-+		error = susfs_get_sus_su_mode((int __user *)arg4);
-+		break;
-+	case CMD_SUSFS_SET_SUS_SU_PATH:
-+		error = susfs_set_sus_su_path((struct st_susfs_sus_su_path __user *)arg4);
-+		break;
-+#endif
-+	default:
-+		pr_err("SUSFS: unknown cmd: %d\n", cmd);
-+		error = -EINVAL;
-+		break;
-+	}
-+
-+	return error;
-+}
-+#endif
-+
- // IOCTL handlers mapping table
- static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
- 	{ .cmd = KSU_IOCTL_GRANT_ROOT, .name = "GRANT_ROOT", .handler = do_grant_root, .perm_check = allowed_for_su },
-@@ -500,6 +576,9 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
- 	{ .cmd = KSU_IOCTL_MANAGE_MARK, .name = "MANAGE_MARK", .handler = do_manage_mark, .perm_check = manager_or_root },
- 	{ .cmd = KSU_IOCTL_GET_HOOK_MODE, .name = "GET_HOOK_MODE", .handler = do_get_hook_mode, .perm_check = manager_or_root },
- 	{ .cmd = KSU_IOCTL_GET_VERSION_TAG, .name = "GET_VERSION_TAG", .handler = do_get_version_tag, .perm_check = manager_or_root },
-+#ifdef CONFIG_KSU_SUSFS
-+	{ .cmd = CMD_SUSFS_FROM_KSU, .name = "SUSFS_FROM_KSU", .handler = (void*)handle_susfs_from_ksu_supercall, .perm_check = manager_or_root },
-+#endif
- 	{ .cmd = 0, .name = NULL, .handler = NULL, .perm_check = NULL } // Sentinel
- };
+ 	}
+ 	break;
+ }

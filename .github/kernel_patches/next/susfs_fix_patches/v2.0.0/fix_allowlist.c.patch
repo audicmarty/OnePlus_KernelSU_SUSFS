@@ -1,0 +1,15 @@
+diff --git a/kernel/allowlist.c b/kernel/allowlist.c
+index c9a68e27..patched 100644
+--- a/kernel/allowlist.c
++++ b/kernel/allowlist.c
+@@ -258,7 +258,9 @@ out:
+ 
+     if (persist) {
+         persistent_allow_list();
++#ifndef CONFIG_KSU_SUSFS
+         // FIXME: use a new flag
+         ksu_mark_running_process();
++#endif
+     }
+ 
+     return result;
