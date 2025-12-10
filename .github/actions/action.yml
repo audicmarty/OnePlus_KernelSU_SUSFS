@@ -378,22 +378,30 @@ runs:
       run: |
         set -euo pipefail
         echo "::group::Download ZyC Clang (Oryon CPU support)"
-       
-        ZYC_CLANG_VERSION="22.0.0git-20250923-release"
-        ZYC_CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/${ZYC_CLANG_VERSION}/Clang-${ZYC_CLANG_VERSION}.tar.gz"
+
+        # Latest ZyC Clang release as of December 10, 2025
+        ZYC_CLANG_VERSION="22.0.0git-20250928-release"
+        ZYC_CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/${ZYC_CLANG_VERSION}/Clang-22.0.0git-20250928.tar.gz"
+
         CLANG_DIR="$GITHUB_WORKSPACE/zyc-clang"
-       
+
         echo "Downloading ZyC Clang ${ZYC_CLANG_VERSION} for Oryon CPU support..."
         mkdir -p "$CLANG_DIR"
+
+        # Download and extract directly
         curl -LsS "$ZYC_CLANG_URL" | tar -xzf - -C "$CLANG_DIR"
-       
-        # Update CLANG_BIN_PATH to use ZyC Clang
-        echo "CLANG_BIN_PATH=$CLANG_DIR/bin" >> "$GITHUB_ENV"
-       
+
+        # ZyC Clang extracts into a folder like Clang-22.0.0git-20250928
+        # So we need to point to the actual bin directory
+        ACTUAL_CLANG_BIN="$CLANG_DIR/Clang-22.0.0git-20250928/bin"
+
+        # Update environment variable
+        echo "CLANG_BIN_PATH=$ACTUAL_CLANG_BIN" >> "$GITHUB_ENV"
+
         # Verify clang works
-        CLANG_VERSION="$("$CLANG_DIR/bin/clang" --version | head -n1)"
+        CLANG_VERSION="$("$ACTUAL_CLANG_BIN/clang" --version | head -n1)"
         echo "CLANG_VERSION=$CLANG_VERSION" >> "$GITHUB_ENV"
-       
+
         echo "✅ ZyC Clang installed: $CLANG_VERSION"
         echo "::endgroup::"
 
