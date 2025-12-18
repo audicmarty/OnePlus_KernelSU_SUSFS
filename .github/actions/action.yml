@@ -1057,7 +1057,7 @@ runs:
         }' ./common/modules.bzl
         
         sed -i "s/$(printf '\044'){{kernelrelease}}/\"$(printf '\044'){{kernelrelease}}\"/g" ./build/kernel/kleaf/impl/kernel_modules_install.bzl
-        sed -i -e '/_GKI_AARCH64_MAKE_GOALS/,/]/ s/"modules",\?//g' -e '/_GKI_AARCH64_MAKE_GOALS/,/]/ {/^[[:space:]]*$/d}' -e 's/module_implicit_outs = get_gki_modules_list("arm64") + get_kunit_modules_list("arm64")/module_implicit_outs = []/' common/BUILD.bazel
+        sed -i -e '/_GKI_AARCH64_MAKE_GOALS/,/]/ s/"modules",\?//g' -e '/_GKI_AARCH64_MAKE_GOALS/,/]/ {/^[[:space:]]*$/d}' -e 's/module_implicit_outs = get_gki_modules_list("arm64") + get_kunit_modules_list("arm64")/module_implicit_outs = []/' -e 's/":tests_zip_arm64",//' -e '/extra_dist/,/]/ {/^[[:space:]]*$/d}' common/BUILD.bazel
         
         # Run sed commands for modifications
         sed -i 's/check_defconfig//' ./common/build.config.gki
